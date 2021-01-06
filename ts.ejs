@@ -11,6 +11,12 @@
   }
 <%  })%>
 
+
+export default {<% renderList.forEach((item)=>{ %> 
+  <%- item.operationId%> ,
+  <%  })%> 
+}
+
 <% definitions.forEach( element => {%>
   export type <%= element.name.replace("«","").replace("»","") %> = {
   <% element.tsType.properties.forEach( propertity => { %>

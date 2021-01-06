@@ -51,6 +51,18 @@ const speechBbbbbsss = (): Promise<BaseResponse> => {
   return new Promise(() => {})
 }
 
+export default {
+  speechSpeechComponentAdd,
+
+  speechSpeechComponentAddaaa,
+
+  speechAaaaaa,
+
+  speechBbbbb,
+
+  speechBbbbbsss
+}
+
 export type componentTreeRequest = {
   //话术id
   speechId?: string,
