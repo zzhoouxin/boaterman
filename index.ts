@@ -97,23 +97,14 @@ function converTest(data: {
     const newDefinitions = assemblyResponse(data.definitions, Array.from(hasRenderType));
 
 
-    let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-    const webApiHtml =  prettier.format(ejs.render(action, { renderList,definitions: newDefinitions }), { semi: false, parser: "babel" });
-    fs.writeFile(`action.ts`, webApiHtml, 'utf8', async () => {});
+    // let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
+    // const webApiHtml =  prettier.format(ejs.render(action, { renderList,definitions: newDefinitions }), { semi: false, parser: "babel" });
+    // fs.writeFile(`action.ts`, webApiHtml, 'utf8', async () => {});
 
     // console.log('hasRenderType====>', Array.from(hasRenderType));
     //end.写入代码
-    // writeCode(renderList, newDefinitions,controller.name);
+    writeCode({renderList,definitions:newDefinitions},controller.name);
   });
-
-  // //渲染ref对象数据
-  // _.forEach(data.definitions, function(definition: any, name: string) {
-  //   newDefinitions.push({
-  //     name: normalizeTypeName(name),
-  //     description: definition.description,
-  //     tsType: ts.convertType(definition, data),
-  //   });
-  // });
 }
 
 function assemblyResponse(definitions: any, hasRenderTypeList: string[]) {
@@ -253,9 +244,10 @@ function getResponseType(response: any): string {
 // }
 
 //4.写入code
-function writeCode(renderList: any,definitions:any, fileName: string) {
+function writeCode(data:any, fileName: string) {
   let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-  const webApiHtml = ejs.render(action, { renderList ,definitions});
+  const ejsHtml = ejs.render(action, { ...data});
+  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: "babel" });
   fs.writeFile(`${fileName}Controller.ts`, webApiHtml, 'utf8', async () => {});
 }
 
