@@ -5,14 +5,17 @@
   *<%= item.summary%>
   *
   **/
-  const <%- item.operationId%> = (<%- item.showRender%>):<%- item.responseType%>=>{ const data = {} as any; return data;}
+  const <%- item.operationId%> = (<%- item.showRender%>):Promise<<%- item.responseType%>>=>{ 
+    return new Promise(()=>{
+    });
+  }
 <%  })%>
 
 <% definitions.forEach( element => {%>
   export type <%= element.name.replace("«","").replace("»","") %> = {
   <% element.tsType.properties.forEach( propertity => { %>
     //<%- propertity.description %> 
-    <%= propertity.name %><% if ( propertity.optional ) { %>?<% } %>:<% if ( propertity.isRef ) { %> <%= propertity.target %> <% } %><% if ( propertity.isAtomic ) { %> <%- propertity.tsType %> <% } %> <% if ( propertity.isObject ) { %> object <% } %><% if ( propertity.isArray ) { %> Array <<%-propertity.elementType.target?propertity.elementType.target.replace("«","").replace("»",""):propertity.elementType.tsType %>><% } %>
+    <%= propertity.name %><% if ( propertity.optional ) { %>?<% } %>:<% if ( propertity.isRef ) { %> <%= propertity.target %> <% } %><% if ( propertity.isAtomic ) { %> <%- propertity.tsType %> <% } %> <% if ( propertity.isObject ) { %> object <% } %><% if ( propertity.isArray ) { %> Array <<%-propertity.elementType.target?propertity.elementType.target.replace("«","").replace("»",""):propertity.elementType.tsType %>><% } %>,
   <% } ) %>
   }
 <%} ) %>

@@ -6,6 +6,7 @@ const ejs = require('ejs'); //ejs模版引擎
 const fs = require('fs'); //文件读写
 const path = require('path'); //路径配置
 const axios = require('axios');
+const prettier = require("prettier");
 const swaggerUrl = 'http://localhost:7001/swagger-doc';
 
 /**
@@ -97,7 +98,7 @@ function converTest(data: {
 
 
     let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-    const webApiHtml = ejs.render(action, { renderList,definitions: newDefinitions });
+    const webApiHtml =  prettier.format(ejs.render(action, { renderList,definitions: newDefinitions }), { semi: false, parser: "babel" });
     fs.writeFile(`action.ts`, webApiHtml, 'utf8', async () => {});
 
     // console.log('hasRenderType====>', Array.from(hasRenderType));
