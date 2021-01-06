@@ -6,7 +6,7 @@ const ejs = require('ejs'); //ejs模版引擎
 const fs = require('fs'); //文件读写
 const path = require('path'); //路径配置
 const axios = require('axios');
-const swaggerUrl = 'http://localhost:7002/swagger-doc';
+const swaggerUrl = 'http://localhost:7001/swagger-doc';
 
 /**
  * 获取基础的swagger数据
@@ -27,6 +27,7 @@ async function getBaseSwaggerInfo() {
       //类型key
       for (let methodKey in pathsObj) {
         const serviceInfo = pathsObj[methodKey];
+
         data = {
           url: urlKey,
           method: methodKey.toUpperCase(), //接口方法
@@ -34,6 +35,7 @@ async function getBaseSwaggerInfo() {
           summary: serviceInfo.summary, //描述
           params: serviceInfo.parameters, //入参
           response: serviceInfo.responses, //响应
+          operationId: serviceInfo.operationId, //方法名称
         };
       }
       generateList.push(data);
@@ -70,13 +72,10 @@ function converTest(data: {
   //   definitionsNameList.push(key);
   // });
 
-
-
-
   //渲染list
   const renderList = [] as any;
   //所有入参类型
-  const hasRenderType  =  new Set();
+  const hasRenderType = new Set();
   //1.处理入参ts类型
   data.controllerList.map((controller) => {
     controller.list.map((item) => {
@@ -85,17 +84,14 @@ function converTest(data: {
         parameter.tsType = tsType;
       });
       //2.组装渲染参数
-      assemblyRender(item, renderList,hasRenderType);
+      assemblyRender(item, renderList, hasRenderType);
       //3.组装response
-      assemblyResponse(item.response,hasRenderType)
+      assemblyResponse(item.response, hasRenderType);
     });
   });
-
-
-
- 
+  console.log('renderList====>', renderList);
   let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-  const webApiHtml = ejs.render(action, { renderList});
+  const webApiHtml = ejs.render(action, { renderList });
   fs.writeFile('action.ts', webApiHtml, 'utf8', async () => {});
 
   // //渲染ref对象数据
@@ -113,18 +109,31 @@ function converTest(data: {
 }
 
 //2.组装渲染数据
-function assemblyRender(item: any, renderList: any,hasRenderType:Set<unknown>) {
+function assemblyRender(
+  item: any,
+  renderList: any,
+  hasRenderType: Set<unknown>
+) {
   let showRenderString = new Set();
   let showRenderRef = new Set();
   //获取返回类型
-  const responseType  = getResponseType(item.response)
+  const responseType = getResponseType(item.response);
+  let operationName = '';
+  const operationList:string[] = item.operationId.replace('controller-','').split('-');
+  operationList.map((_operation,_operationIndex)=>{
+    if(_operationIndex === 0 ){
+      operationName += _operation;
+      return;
+    }
+    operationName += _operation.slice(0, 1).toUpperCase() + _operation.slice(1)
+  })
   let baseData = {
     url: item.url,
     method: item.method,
     summary: item.summary,
-    responseType
+    responseType,
+    operationId:operationName
   } as any;
- 
   // 这边参数为1个的时候-不管是单个字段或者ref类型
   if (item.params.length === 0) {
     baseData.showRender = '';
@@ -134,7 +143,7 @@ function assemblyRender(item: any, renderList: any,hasRenderType:Set<unknown>) {
       baseData.showRender = `params${typeData.required ? '' : '?'}:${
         typeData.tsType.target
       }`;
-      hasRenderType.add(typeData.tsType.target)
+      hasRenderType.add(typeData.tsType.target);
     } else {
       baseData.showRender = `${typeData.name}${typeData.required ? '' : '?'}:${
         typeData.tsType.tsType
@@ -147,11 +156,11 @@ function assemblyRender(item: any, renderList: any,hasRenderType:Set<unknown>) {
       if (_params.tsType.isRef) {
         isRefTypeCount += 1;
         showRenderRef.add(`${_params.tsType.target}`);
-        hasRenderType.add(_params.tsType.target)
+        hasRenderType.add(_params.tsType.target);
       } else if (_params.tsType.isObject) {
         isRefTypeCount += 1;
         showRenderRef.add(`${_params.type}`);
-        hasRenderType.add(_params.type)
+        hasRenderType.add(_params.type);
       } else {
         showRenderString.add(
           `${_params.name}${_params.required ? '' : '?'}:${
@@ -178,31 +187,40 @@ function assemblyRender(item: any, renderList: any,hasRenderType:Set<unknown>) {
   renderList.push(baseData);
 }
 
-function  getResponseType(response:any):string{
+//获取response类型
+function getResponseType(response: any): string {
   let responseType = '';
-  _.forEach(response,(swaggerType:any,key:string) => {
-    
-    if(key === 'default'){
-      responseType =  'BaseResponse'
+  _.forEach(response, (swaggerType: any, key: string) => {
+    if (key === 'default') {
+      responseType = 'BaseResponse';
     }
-    if(swaggerType.hasOwnProperty('schema')  && _.isString(swaggerType.schema?.$ref)){
-      responseType = swaggerType.schema.$ref.substring(swaggerType.schema.$ref.lastIndexOf('/') + 1);
+    if (
+      swaggerType.hasOwnProperty('schema') &&
+      _.isString(swaggerType.schema?.$ref)
+    ) {
+      responseType = swaggerType.schema.$ref.substring(
+        swaggerType.schema.$ref.lastIndexOf('/') + 1
+      );
     }
   });
   return responseType;
 }
 
 //3.组装需要的Response
-function assemblyResponse(response:any,hasRenderType:Set<unknown>){
-  _.forEach(response,(swaggerType:any,key:string) => {
-    
-    if(key === 'default'){
-      hasRenderType.add('BaseResponse')
+function assemblyResponse(response: any, hasRenderType: Set<unknown>) {
+  _.forEach(response, (swaggerType: any, key: string) => {
+    if (key === 'default') {
+      hasRenderType.add('BaseResponse');
       return;
     }
-    if(swaggerType.hasOwnProperty('schema')  && _.isString(swaggerType.schema?.$ref)){
-     const responseType = swaggerType.schema.$ref.substring(swaggerType.schema.$ref.lastIndexOf('/') + 1);
-     hasRenderType.add(responseType)
+    if (
+      swaggerType.hasOwnProperty('schema') &&
+      _.isString(swaggerType.schema?.$ref)
+    ) {
+      const responseType = swaggerType.schema.$ref.substring(
+        swaggerType.schema.$ref.lastIndexOf('/') + 1
+      );
+      hasRenderType.add(responseType);
     }
   });
 }
@@ -217,6 +235,7 @@ interface GenerateData {
   params: Params[];
   response: any;
   tags: string;
+  operationId:string;
 }
 
 interface Params {

@@ -1,3 +1,9 @@
+
 <% renderList.forEach((item)=>{ %>
-  const <%- item.url%> = (<%- item.showRender%>):<%- item.responseType%>=>{}
+  /**
+  *
+  *<%= item.summary%>
+  *
+  **/
+  const <%- item.operationId%> = (<%- item.showRender%>):<%- item.responseType%>=>{}
 <%  })%>
