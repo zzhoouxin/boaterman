@@ -52,9 +52,9 @@ function convertType(swaggerType, swagger) {
         var property = convertType(propertyType);
         property.name = propertyName;
 
-        property.optional = true;
-        if (swaggerType.required && swaggerType.required.indexOf(propertyName) !== -1) {
-          property.optional = false;
+        property.optional = false;
+        if (swaggerType.required && swaggerType.required.includes(propertyName)) {
+          property.optional = true;
         }
         typespec.properties.push(property);
       });

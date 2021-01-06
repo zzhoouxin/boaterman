@@ -72,12 +72,14 @@ function converTest(data: {
   //   definitionsNameList.push(key);
   // });
 
-  //渲染list
-  const renderList = [] as any;
-  //所有入参类型
-  const hasRenderType = new Set();
+  // console.log('data====>', data);
+
   //1.处理入参ts类型
   data.controllerList.map((controller) => {
+    //渲染list
+    const renderList = [] as any;
+    //所有入参类型
+    const hasRenderType = new Set() as Set<string>;
     controller.list.map((item) => {
       _.forEach(item.params, function(parameter: any) {
         var tsType = ts.convertType(parameter);
@@ -85,14 +87,23 @@ function converTest(data: {
       });
       //2.组装渲染参数
       assemblyRender(item, renderList, hasRenderType);
-      //3.组装response
-      assemblyResponse(item.response, hasRenderType);
+      //3.得到所有的response
+      hasRenderType.add(getResponseType(item.response));
     });
+
+    // console.log('data.definitions=====>',data.definitions)
+
+    const newDefinitions = assemblyResponse(data.definitions, Array.from(hasRenderType));
+
+
+    let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
+    const webApiHtml = ejs.render(action, { renderList,definitions: newDefinitions });
+    fs.writeFile(`action.ts`, webApiHtml, 'utf8', async () => {});
+
+    // console.log('hasRenderType====>', Array.from(hasRenderType));
+    //end.写入代码
+    // writeCode(renderList, newDefinitions,controller.name);
   });
-  console.log('renderList====>', renderList);
-  let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-  const webApiHtml = ejs.render(action, { renderList });
-  fs.writeFile('action.ts', webApiHtml, 'utf8', async () => {});
 
   // //渲染ref对象数据
   // _.forEach(data.definitions, function(definition: any, name: string) {
@@ -102,10 +113,22 @@ function converTest(data: {
   //     tsType: ts.convertType(definition, data),
   //   });
   // });
+}
 
-  // let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-  // const webApiHtml = ejs.render(action, { definitions:newDefinitions});
-  // fs.writeFile('action.ts', webApiHtml, 'utf8', async () => {});
+function assemblyResponse(definitions: any, hasRenderTypeList: string[]) {
+  const newDefinitions = [] as any;
+  _.forEach(definitions, (value: any, key: string) => {
+    _.forEach(hasRenderTypeList, (renderTypeName: string) => {
+      if (key === renderTypeName) {
+        newDefinitions.push({
+          name: normalizeTypeName(key),
+          description: value.description,
+          tsType: ts.convertType(value),
+        });
+      }
+    });
+  });
+  return newDefinitions;
 }
 
 //2.组装渲染数据
@@ -119,20 +142,22 @@ function assemblyRender(
   //获取返回类型
   const responseType = getResponseType(item.response);
   let operationName = '';
-  const operationList:string[] = item.operationId.replace('controller-','').split('-');
-  operationList.map((_operation,_operationIndex)=>{
-    if(_operationIndex === 0 ){
+  const operationList: string[] = item.operationId
+    .replace('controller-', '')
+    .split('-');
+  operationList.map((_operation, _operationIndex) => {
+    if (_operationIndex === 0) {
       operationName += _operation;
       return;
     }
-    operationName += _operation.slice(0, 1).toUpperCase() + _operation.slice(1)
-  })
+    operationName += _operation.slice(0, 1).toUpperCase() + _operation.slice(1);
+  });
   let baseData = {
     url: item.url,
     method: item.method,
     summary: item.summary,
     responseType,
-    operationId:operationName
+    operationId: operationName,
   } as any;
   // 这边参数为1个的时候-不管是单个字段或者ref类型
   if (item.params.length === 0) {
@@ -184,6 +209,7 @@ function assemblyRender(
       )}} & ${Array.from(showRenderRef).join('&')}`;
     }
   }
+
   renderList.push(baseData);
 }
 
@@ -206,23 +232,30 @@ function getResponseType(response: any): string {
   return responseType;
 }
 
-//3.组装需要的Response
-function assemblyResponse(response: any, hasRenderType: Set<unknown>) {
-  _.forEach(response, (swaggerType: any, key: string) => {
-    if (key === 'default') {
-      hasRenderType.add('BaseResponse');
-      return;
-    }
-    if (
-      swaggerType.hasOwnProperty('schema') &&
-      _.isString(swaggerType.schema?.$ref)
-    ) {
-      const responseType = swaggerType.schema.$ref.substring(
-        swaggerType.schema.$ref.lastIndexOf('/') + 1
-      );
-      hasRenderType.add(responseType);
-    }
-  });
+// //3.组装需要的Response
+// function assemblyResponse(response: any, hasRenderType: Set<unknown>) {
+//   _.forEach(response, (swaggerType: any, key: string) => {
+//     if (key === 'default') {
+//       hasRenderType.add('BaseResponse');
+//       return;
+//     }
+//     if (
+//       swaggerType.hasOwnProperty('schema') &&
+//       _.isString(swaggerType.schema?.$ref)
+//     ) {
+//       const responseType = swaggerType.schema.$ref.substring(
+//         swaggerType.schema.$ref.lastIndexOf('/') + 1
+//       );
+//       hasRenderType.add(responseType);
+//     }
+//   });
+// }
+
+//4.写入code
+function writeCode(renderList: any,definitions:any, fileName: string) {
+  let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
+  const webApiHtml = ejs.render(action, { renderList ,definitions});
+  fs.writeFile(`${fileName}Controller.ts`, webApiHtml, 'utf8', async () => {});
 }
 
 function normalizeTypeName(id: string) {
@@ -235,7 +268,7 @@ interface GenerateData {
   params: Params[];
   response: any;
   tags: string;
-  operationId:string;
+  operationId: string;
 }
 
 interface Params {
