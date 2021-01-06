@@ -67,14 +67,6 @@ function converTest(data: {
   controllerList: ControllerList[];
   definitions: any;
 }) {
-  //这边准备处理所有的ref 类型
-  // const definitionsNameList = [] as string[];
-  // _.forEach(data.definitions, (value: any, key: any) => {
-  //   definitionsNameList.push(key);
-  // });
-
-  // console.log('data====>', data);
-
   //1.处理入参ts类型
   data.controllerList.map((controller) => {
     //渲染list
@@ -91,17 +83,7 @@ function converTest(data: {
       //3.得到所有的response
       hasRenderType.add(getResponseType(item.response));
     });
-
-    // console.log('data.definitions=====>',data.definitions)
-
     const newDefinitions = assemblyResponse(data.definitions, Array.from(hasRenderType));
-
-
-    // let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-    // const webApiHtml =  prettier.format(ejs.render(action, { renderList,definitions: newDefinitions }), { semi: false, parser: "babel" });
-    // fs.writeFile(`action.ts`, webApiHtml, 'utf8', async () => {});
-
-    // console.log('hasRenderType====>', Array.from(hasRenderType));
     //end.写入代码
     writeCode({renderList,definitions:newDefinitions},controller.name);
   });
@@ -223,25 +205,6 @@ function getResponseType(response: any): string {
   });
   return responseType;
 }
-
-// //3.组装需要的Response
-// function assemblyResponse(response: any, hasRenderType: Set<unknown>) {
-//   _.forEach(response, (swaggerType: any, key: string) => {
-//     if (key === 'default') {
-//       hasRenderType.add('BaseResponse');
-//       return;
-//     }
-//     if (
-//       swaggerType.hasOwnProperty('schema') &&
-//       _.isString(swaggerType.schema?.$ref)
-//     ) {
-//       const responseType = swaggerType.schema.$ref.substring(
-//         swaggerType.schema.$ref.lastIndexOf('/') + 1
-//       );
-//       hasRenderType.add(responseType);
-//     }
-//   });
-// }
 
 //4.写入code
 function writeCode(data:any, fileName: string) {
