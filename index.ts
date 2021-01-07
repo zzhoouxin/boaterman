@@ -1,5 +1,5 @@
-let _ = require('lodash');
-var ts = require('./util');
+const _ = require('lodash');
+const ts = require('./util');
 const ejs = require('ejs'); //ejs模版引擎
 const fs = require('fs'); //文件读写
 const path = require('path'); //路径配置
@@ -299,7 +299,6 @@ function getResponseType(response: any): string {
         responseType = swaggerType.schema.type;
       }
     }
-    
   });
   return responseType;
 }
