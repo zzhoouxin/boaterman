@@ -5,13 +5,10 @@ const fs = require('fs'); //文件读写
 const path = require('path'); //路径配置
 const axios = require('axios');
 const ora = require('ora');
-const chalk = require('chalk');
-const log = console.log;
 const prettier = require('prettier');
-var figlet = require('figlet');
-const spinners = [ora('正在获取swagger数据中...')];
-const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
-// const swaggerUrl = 'http://localhost:7001/swagger-doc';
+const spinners = [ora('正在获取swagger数据中...'),ora('TS代码生成中...')];
+// const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
+const swaggerUrl = 'http://localhost:7001/swagger-doc';
 /**
  * 获取基础的swagger数据
  */
@@ -81,6 +78,7 @@ function converTest(data: {
   definitions: any;
 }) {
   try {
+      spinners[1].start();
     //1.处理入参ts类型
     data.controllerList.map((controller) => {
       //渲染list
@@ -107,7 +105,9 @@ function converTest(data: {
 
       writeCode({ renderList, definitions: newDefinitions }, controller.name);
     });
-      adjectiveLog();
+     setTimeout(()=>{
+         spinners[1].succeed('TS代码生成成功~~');
+     },1000)
 
 
 
@@ -360,18 +360,7 @@ function normalizeTypeName(id: string) {
   return id.replace(/«|»/g, '');
 }
 
-/**
- * 无聊的恶趣味
- */
-function adjectiveLog(){
-  console.log(chalk.blue.bold('👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿'));
-  console.log(chalk.blue.bold('👿                              👿'));
-  console.log(chalk.blue.bold(`👿      TS代码正在生成成功!     👿`));
-  console.log(chalk.blue.bold('👿                              👿'));
-  console.log(chalk.blue.bold('👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿'));
-    console.log(chalk.blue.bold(`       我是不是很无聊....`))
 
-}
 interface GenerateData {
   url: string;
   method: string;
