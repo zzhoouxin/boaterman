@@ -1,4 +1,3 @@
-import { collapseTextChangeRangesAcrossMultipleVersions } from 'typescript';
 
 let _ = require('lodash');
 var ts = require('./util');
@@ -7,7 +6,7 @@ const fs = require('fs'); //文件读写
 const path = require('path'); //路径配置
 const axios = require('axios');
 const prettier = require('prettier');
-const swaggerUrl = 'http://localhost:7001/swagger-doc';
+const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
 
 /**
  * 获取基础的swagger数据
@@ -28,7 +27,6 @@ async function getBaseSwaggerInfo() {
       //类型key
       for (let methodKey in pathsObj) {
         const serviceInfo = pathsObj[methodKey];
-
         data = {
           url: urlKey,
           method: methodKey.toUpperCase(), //接口方法
@@ -80,9 +78,10 @@ function converTest(data: {
       });
       //2.组装渲染参数
       assemblyRender(item, renderList, hasRenderType);
+      
       //3.得到所有的接口的response
-
       hasRenderType.add(getResponseType(item.response));
+   
       //4.得到的响应 里面可能还会包裹其他的对象
     });
 
@@ -94,7 +93,7 @@ function converTest(data: {
 }
 
 /**
- *
+ * 处理response对象
  * @param definitions 总接口的respons
  * @param hasRenderTypeList 需要渲染的response key
  * @param isrecursive 是否顶柜
@@ -109,8 +108,6 @@ function assemblyResponse(
   _.forEach(definitions, (value: any, key: string) => {
     _.forEach(newHasRenderTypeList, (renderTypeName: string) => {
       if (key === renderTypeName) {
-        //那这边暂时不push-- 去递归吧
-        // console.log("value======》",value.properties)
         if (isrecursive) {
           findMoreRef(definitions, key, hasRenderTypeList);
           return;
@@ -126,7 +123,12 @@ function assemblyResponse(
   return newDefinitions;
 }
 
-
+/**
+ * 递归寻找更多ref类型
+ * @param alldefinitions  所有ref类型汇总
+ * @param key 寻找的key
+ * @param hasRenderTypeList 需要渲染的key
+ */
 function findMoreRef(
   alldefinitions: any,
   key: any,
@@ -189,13 +191,14 @@ function assemblyRender(
     url: item.url,
     method: item.method,
     summary: item.summary,
-    responseType,
+    responseType:normalizeTypeName(responseType),
     operationId: operationName,
   } as any;
   // 这边参数为1个的时候-不管是单个字段或者ref类型
-  if (item.params.length === 0) {
+  console.log("item====>",item)
+  if ( !item?.params || item?.params?.length === 0 ) {
     baseData.showRender = '';
-  } else if (item.params.length === 1) {
+  } else if (item?.params?.length === 1) {
     const typeData = item.params[0];
     if (typeData?.tsType?.isRef) {
       baseData.showRender = `params${typeData.required ? '' : '?'}:${
@@ -207,7 +210,7 @@ function assemblyRender(
         typeData.tsType.tsType
       }`;
     }
-  } else if (item.params.length > 1) {
+  } else if (item?.params?.length > 1) {
     //当是多个入参的时候--如果全部是单个字段 如果是其他对象呢
     let isRefTypeCount = 0;
     item.params.map((_params: any) => {
@@ -221,14 +224,14 @@ function assemblyRender(
         hasRenderType.add(_params.type);
       } else {
         showRenderString.add(
-          `${_params.name}${_params.required ? '' : '?'}:${
+          `${_params.name}${_params.required ? '' : '?'} : ${
             _params.tsType.tsType
           }`
         );
       }
     });
     //如果全是ref
-    if (isRefTypeCount === item.params.length) {
+    if (isRefTypeCount === item?.params?.length) {
       baseData.showRender = `params:${Array.from(showRenderRef).join('&')}`;
     } else if (isRefTypeCount === 0) {
       //全是单独类型
@@ -270,8 +273,8 @@ function getResponseType(response: any): string {
 function writeCode(data: any, fileName: string) {
   let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
   const ejsHtml = ejs.render(action, { ...data });
-  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
-  fs.writeFile(`${fileName}Controller.ts`, webApiHtml, 'utf8', async () => {});
+  // const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
+  fs.writeFile(`${fileName}Controller.ts`, ejsHtml, 'utf8', async () => {});
 }
 
 function normalizeTypeName(id: string) {

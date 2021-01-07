@@ -9,6 +9,11 @@ const speechSpeechComponentAdd = (
   return new Promise(() => {})
 }
 
+function aa(a? : string){
+  console.log(a)
+
+}
+
 /**
  *
  *修改组件
@@ -16,6 +21,17 @@ const speechSpeechComponentAdd = (
  **/
 const speechSpeechComponentEdit = (
   params: speechComponentEditRequest
+): Promise<BaseResponse> => {
+  return new Promise(() => {})
+}
+
+/**
+ *
+ *获取话术组件树
+ *
+ **/
+const speechSpeechGetComponentTree = (
+  params: componentTreeRequest
 ): Promise<treeResponse> => {
   return new Promise(() => {})
 }
@@ -36,7 +52,23 @@ export default {
 
   speechSpeechComponentEdit,
 
+  speechSpeechGetComponentTree,
+
   speechDeleteSpeechComponent
+}
+
+export type componentTreeRequest = {
+  //话术id
+  speechId?: string,
+
+  //环境
+  branch?: string,
+
+  //
+  list: Array<string>,
+
+  //
+  nishiahsbai: zhouxinUser
 }
 
 export type speechComponentAddRequest = {
@@ -65,35 +97,6 @@ export type speechComponentEditRequest = {
 
   //
   list: Array<string>
-}
-
-export type treeResponse = {
-  //组件UUID
-  componentUuid?: string,
-
-  //组件名称
-  name?: string,
-
-  //修改状态
-  editStatus?: string,
-
-  //使用状态
-  useStatus?: string,
-
-  //排序
-  sortIndex?: string,
-
-  //排序
-  sortIndexABS?: string,
-
-  //子组件
-  subComponents: Array<treeResponse>,
-
-  //
-  list: Array<string>,
-
-  //
-  list2: Array<zhouxinUser>
 }
 
 export type zhouxinUser = {
@@ -185,6 +188,26 @@ export type juncao1 = {
 
   //这个返回 年龄
   zhouxinAge?: number
+}
+
+export type treeResponse = {
+  //组件UUID
+  componentUuid?: string,
+
+  //组件名称
+  name?: string,
+
+  //修改状态
+  editStatus?: string,
+
+  //使用状态
+  useStatus?: string,
+
+  //排序
+  sortIndex?: string,
+
+  //排序
+  sortIndexABS?: string
 }
 
 export type BaseResponse = {}
