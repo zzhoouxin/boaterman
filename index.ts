@@ -20,6 +20,7 @@ async function getBaseSwaggerInfo() {
     json = response.data;
     
   } catch (error) {
+    console.log("swagger 好像出现什么问题了~")
     
   }
 
