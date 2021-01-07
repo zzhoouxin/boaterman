@@ -4,71 +4,39 @@
  *
  **/
 const speechSpeechComponentAdd = (
-  params: { id: string, age: number, height?: number } & componentTreeRequest
+  params: speechComponentAddRequest
 ): Promise<treeResponse> => {
   return new Promise(() => {})
 }
 
 /**
  *
- *添加组件
+ *修改组件
  *
  **/
-const speechSpeechComponentAddaaa = (params: {
-  zhouxinId: string,
-  zhouxinAge: number,
-  zhouuxinHeight?: number
-}): Promise<treeResponse> => {
+const speechSpeechComponentEdit = (
+  params: speechComponentEditRequest
+): Promise<treeResponse> => {
   return new Promise(() => {})
 }
 
 /**
  *
- *添加组件
+ *删除组件
  *
  **/
-const speechAaaaaa = (
-  params: { zhouxinId: string } & speechComponentAddRequest & treeResponse
-): Promise<zhouxinResponse> => {
-  return new Promise(() => {})
-}
-
-/**
- *
- *添加组件
- *
- **/
-const speechBbbbb = (params: componentTreeRequest): Promise<treeResponse> => {
-  return new Promise(() => {})
-}
-
-/**
- *
- *添加组件
- *
- **/
-const speechBbbbbsss = (): Promise<BaseResponse> => {
+const speechDeleteSpeechComponent = (
+  componentUuid?: string
+): Promise<treeResponse> => {
   return new Promise(() => {})
 }
 
 export default {
   speechSpeechComponentAdd,
 
-  speechSpeechComponentAddaaa,
+  speechSpeechComponentEdit,
 
-  speechAaaaaa,
-
-  speechBbbbb,
-
-  speechBbbbbsss
-}
-
-export type componentTreeRequest = {
-  //话术id
-  speechId?: string,
-
-  //环境
-  branch?: string
+  speechDeleteSpeechComponent
 }
 
 export type speechComponentAddRequest = {
@@ -82,6 +50,14 @@ export type speechComponentAddRequest = {
   parentUuid: string,
 
   //组件uuid
+  componentUuid?: string
+}
+
+export type speechComponentEditRequest = {
+  //组件名称
+  name?: string,
+
+  //组件id
   componentUuid?: string
 }
 
@@ -106,11 +82,6 @@ export type treeResponse = {
 
   //子组件
   subComponents: Array<treeResponse>
-}
-
-export type zhouxinResponse = {
-  //组件名称
-  name?: string
 }
 
 export type BaseResponse = {}

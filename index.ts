@@ -1,5 +1,3 @@
-import { Console } from 'console';
-
 let _ = require('lodash');
 var ts = require('./util');
 const ejs = require('ejs'); //ejs模版引擎
