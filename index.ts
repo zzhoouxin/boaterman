@@ -4,26 +4,33 @@ const ejs = require('ejs'); //ejs模版引擎
 const fs = require('fs'); //文件读写
 const path = require('path'); //路径配置
 const axios = require('axios');
+const ora = require('ora');
+const chalk = require('chalk');
+const log = console.log;
 const prettier = require('prettier');
-// const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
-const swaggerUrl = 'http://localhost:7001/swagger-doc';
+var figlet = require('figlet');
+const spinners = [ora('正在获取swagger数据中...')];
+const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
+// const swaggerUrl = 'http://localhost:7001/swagger-doc';
 /**
  * 获取基础的swagger数据
  */
 async function getBaseSwaggerInfo() {
+  // compose multiple styles using the chainable API
+  // log(chalk.white.bgGreen.bold('Hello world!'));
+
+  spinners[0].start();
   const generateList = [] as Array<GenerateData>;
   const controllerList = [] as Array<ControllerList>;
   let json = {};
   try {
     const response = await axios.get(swaggerUrl);
     if (response.status !== 200) return false;
+    spinners[0].succeed('接口数据请求成功~');
     json = response.data;
-    
   } catch (error) {
-    console.log("swagger 好像出现什么问题了~")
-    
+    spinners[0].fail('swaggger似乎出现了问题~');
   }
-
   const { paths, definitions, tags } = json as any;
   try {
     //1.获取基础的数据
@@ -68,39 +75,44 @@ async function getBaseSwaggerInfo() {
   converTest(baseSwaggerInfo);
 })();
 
-
-
-
 //1.转换Ts类型
 function converTest(data: {
   controllerList: ControllerList[];
   definitions: any;
 }) {
-  //1.处理入参ts类型
-  data.controllerList.map((controller) => {
-    //渲染list
-    const renderList = [] as any;
-    //所有入参类型
-    const hasRenderType = new Set() as Set<string>;
-    controller.list.map((item) => {
-      _.forEach(item.params, function(parameter: any) {
-        var tsType = ts.convertType(parameter);
-        parameter.tsType = tsType;
+  try {
+    //1.处理入参ts类型
+    data.controllerList.map((controller) => {
+      //渲染list
+      const renderList = [] as any;
+      //所有入参类型
+      const hasRenderType = new Set() as Set<string>;
+      controller.list.map((item) => {
+        _.forEach(item.params, function(parameter: any) {
+          var tsType = ts.convertType(parameter);
+          parameter.tsType = tsType;
+        });
+        //2.组装渲染参数
+        assemblyRender(item, renderList, hasRenderType);
+
+        //3.得到所有的接口的response
+        hasRenderType.add(getResponseType(item.response));
+
+        //4.得到的响应 里面可能还会包裹其他的对象
       });
-      //2.组装渲染参数
-      assemblyRender(item, renderList, hasRenderType);
 
-      //3.得到所有的接口的response
-      hasRenderType.add(getResponseType(item.response));
+      assemblyResponse(data.definitions, hasRenderType, true);
+      const newDefinitions = assemblyResponse(data.definitions, hasRenderType);
+      //end.写入代码
 
-      //4.得到的响应 里面可能还会包裹其他的对象
+      writeCode({ renderList, definitions: newDefinitions }, controller.name);
     });
+      adjectiveLog();
 
-    assemblyResponse(data.definitions, hasRenderType, true);
-    const newDefinitions = assemblyResponse(data.definitions, hasRenderType);
-    //end.写入代码
-    writeCode({ renderList, definitions: newDefinitions }, controller.name);
-  });
+
+
+
+  } catch (error) {}
 }
 
 /**
@@ -212,7 +224,6 @@ function assemblyRender(
   } else if (item?.params?.length === 1) {
     const typeData = item.params[0];
     if (baseData.operationId === 'updateStoreSortUsingPOST') {
-      
     }
     if (typeData?.tsType?.isRef) {
       baseData.showRender = `params${typeData.required ? '' : '?'}:${
@@ -292,7 +303,7 @@ function getResponseType(response: any): string {
     if (key === 'default') {
       responseType = 'BaseResponse';
     }
-    if(key === '200'){
+    if (key === '200') {
       if (
         swaggerType.hasOwnProperty('schema') &&
         _.isString(swaggerType.schema?.$ref)
@@ -300,7 +311,10 @@ function getResponseType(response: any): string {
         responseType = swaggerType.schema.$ref.substring(
           swaggerType.schema.$ref.lastIndexOf('/') + 1
         );
-      }else if( swaggerType.hasOwnProperty('schema') &&  swaggerType.schema.hasOwnProperty('type')){
+      } else if (
+        swaggerType.hasOwnProperty('schema') &&
+        swaggerType.schema.hasOwnProperty('type')
+      ) {
         responseType = swaggerType.schema.type;
       }
     }
@@ -310,35 +324,53 @@ function getResponseType(response: any): string {
 
 //4.写入code
 function writeCode(data: any, fileName: string) {
-    let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-    const ejsHtml = ejs.render(action, { ...data });
-    const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
-    fs.writeFile(`./controller/${fileName}Controller.ts`, webApiHtml, 'utf8', async () => {});
+  let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
+  const ejsHtml = ejs.render(action, { ...data });
+  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
+  fs.writeFile(
+    `./controller/${fileName}Controller.ts`,
+    webApiHtml,
+    'utf8',
+    async () => {}
+  );
 }
 
-function baseFileHandle(){
-  delDir(path.join(__dirname,'controller'))
-  fs.mkdirSync(path.join(__dirname,'controller'))
+function baseFileHandle() {
+  delDir(path.join(__dirname, 'controller'));
+  fs.mkdirSync(path.join(__dirname, 'controller'));
 }
 
-function delDir(path:string){
+function delDir(path: string) {
   let files = [];
-  if(fs.existsSync(path)){
-      files = fs.readdirSync(path);
-      files.forEach((file:any) =>{
-          let curPath = path + "/" + file;
-          if(fs.statSync(curPath).isDirectory()){
-              delDir(curPath); //递归删除文件夹
-          } else {
-              fs.unlinkSync(curPath); //删除文件
-          }
-      });
-      fs.rmdirSync(path);
+  if (fs.existsSync(path)) {
+    files = fs.readdirSync(path);
+    files.forEach((file: any) => {
+      let curPath = path + '/' + file;
+      if (fs.statSync(curPath).isDirectory()) {
+        delDir(curPath); //递归删除文件夹
+      } else {
+        fs.unlinkSync(curPath); //删除文件
+      }
+    });
+    fs.rmdirSync(path);
   }
 }
 
 function normalizeTypeName(id: string) {
   return id.replace(/«|»/g, '');
+}
+
+/**
+ * 无聊的恶趣味
+ */
+function adjectiveLog(){
+  console.log(chalk.blue.bold('👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿'));
+  console.log(chalk.blue.bold('👿                              👿'));
+  console.log(chalk.blue.bold(`👿      TS代码正在生成成功!     👿`));
+  console.log(chalk.blue.bold('👿                              👿'));
+  console.log(chalk.blue.bold('👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿👿'));
+    console.log(chalk.blue.bold(`       我是不是很无聊....`))
+
 }
 interface GenerateData {
   url: string;
