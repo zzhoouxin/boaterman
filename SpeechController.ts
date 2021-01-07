@@ -50,7 +50,10 @@ export type speechComponentAddRequest = {
   parentUuid: string,
 
   //组件uuid
-  componentUuid?: string
+  componentUuid?: string,
+
+  //
+  list: Array<string>
 }
 
 export type speechComponentEditRequest = {
@@ -58,7 +61,10 @@ export type speechComponentEditRequest = {
   name?: string,
 
   //组件id
-  componentUuid?: string
+  componentUuid?: string,
+
+  //
+  list: Array<string>
 }
 
 export type treeResponse = {
@@ -81,7 +87,104 @@ export type treeResponse = {
   sortIndexABS?: string,
 
   //子组件
-  subComponents: Array<treeResponse>
+  subComponents: Array<treeResponse>,
+
+  //
+  list: Array<string>,
+
+  //
+  list2: Array<zhouxinUser>
+}
+
+export type zhouxinUser = {
+  //这个返回 ID
+  zhouxinId?: string,
+
+  //这个返回 用户姓名
+  zhouxinName?: string,
+
+  //这个返回 用户性别
+  zhouxinSex?: string,
+
+  //这个返回 年龄
+  zhouxinAge?: number,
+
+  //
+  list: Array<zhangling>
+}
+
+export type zhangling = {
+  //这个返回 ID
+  zhouxinId?: string,
+
+  //这个返回 用户姓名
+  zhouxinName?: string,
+
+  //这个返回 用户性别
+  zhouxinSex?: string,
+
+  //这个返回 年龄
+  zhouxinAge?: number,
+
+  //
+  list: Array<laowang>
+}
+
+export type laowang = {
+  //这个返回 ID
+  zhouxinId?: string,
+
+  //这个返回 用户姓名
+  zhouxinName?: string,
+
+  //这个返回 用户性别
+  zhouxinSex?: string,
+
+  //这个返回 年龄
+  zhouxinAge?: number,
+
+  //
+  list: Array<juncao>
+}
+
+export type juncao = {
+  //这个返回 ID
+  zhouxinId?: string,
+
+  //这个返回 用户姓名
+  zhouxinName?: string,
+
+  //这个返回 用户性别
+  zhouxinSex?: string,
+
+  //这个返回 年龄
+  zhouxinAge?: number,
+
+  //
+  list: Array<laowang>,
+
+  //
+  list22: Array<zhangling>,
+
+  //
+  list333: Array<zhouxinUser>,
+
+  //
+  list4444: juncao1
+}
+
+export type juncao1 = {
+  //这个返回 ID
+  zhouxinId?: string,
+
+  //这个返回 用户姓名
+  zhouxinName?: string,
+
+  //这个返回 用户性别
+  zhouxinSex?: string,
+
+  //这个返回 年龄
+  zhouxinAge?: number
 }
 
 export type BaseResponse = {}

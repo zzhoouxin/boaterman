@@ -1,10 +1,12 @@
+import { collapseTextChangeRangesAcrossMultipleVersions } from 'typescript';
+
 let _ = require('lodash');
 var ts = require('./util');
 const ejs = require('ejs'); //ejs模版引擎
 const fs = require('fs'); //文件读写
 const path = require('path'); //路径配置
 const axios = require('axios');
-const prettier = require("prettier");
+const prettier = require('prettier');
 const swaggerUrl = 'http://localhost:7001/swagger-doc';
 
 /**
@@ -78,20 +80,41 @@ function converTest(data: {
       });
       //2.组装渲染参数
       assemblyRender(item, renderList, hasRenderType);
-      //3.得到所有的response
+      //3.得到所有的接口的response
+
       hasRenderType.add(getResponseType(item.response));
+      //4.得到的响应 里面可能还会包裹其他的对象
     });
-    const newDefinitions = assemblyResponse(data.definitions, Array.from(hasRenderType));
+
+    assemblyResponse(data.definitions, hasRenderType, true);
+    const newDefinitions = assemblyResponse(data.definitions, hasRenderType);
     //end.写入代码
-    writeCode({renderList,definitions:newDefinitions},controller.name);
+    writeCode({ renderList, definitions: newDefinitions }, controller.name);
   });
 }
 
-function assemblyResponse(definitions: any, hasRenderTypeList: string[]) {
+/**
+ *
+ * @param definitions 总接口的respons
+ * @param hasRenderTypeList 需要渲染的response key
+ * @param isrecursive 是否顶柜
+ */
+function assemblyResponse(
+  definitions: any,
+  hasRenderTypeList: Set<string>,
+  isrecursive: boolean = false
+) {
+  const newHasRenderTypeList = Array.from(hasRenderTypeList);
   const newDefinitions = [] as any;
   _.forEach(definitions, (value: any, key: string) => {
-    _.forEach(hasRenderTypeList, (renderTypeName: string) => {
+    _.forEach(newHasRenderTypeList, (renderTypeName: string) => {
       if (key === renderTypeName) {
+        //那这边暂时不push-- 去递归吧
+        // console.log("value======》",value.properties)
+        if (isrecursive) {
+          findMoreRef(definitions, key, hasRenderTypeList);
+          return;
+        }
         newDefinitions.push({
           name: normalizeTypeName(key),
           description: value.description,
@@ -101,6 +124,44 @@ function assemblyResponse(definitions: any, hasRenderTypeList: string[]) {
     });
   });
   return newDefinitions;
+}
+
+
+function findMoreRef(
+  alldefinitions: any,
+  key: any,
+  hasRenderTypeList: Set<string>
+) {
+  _.forEach(alldefinitions, (swaggerType: any, definitionsKey: string) => {
+    if (key === definitionsKey) {
+      _.forEach(
+        swaggerType.properties,
+        (properties: any, propertiesKey: string) => {
+          if (_.isString(properties.$ref)) {
+            const findNeewRenderKey = properties.$ref.substring(
+              properties.$ref.lastIndexOf('/') + 1
+            );
+            hasRenderTypeList.add(findNeewRenderKey);
+            findMoreRef(alldefinitions, findNeewRenderKey, hasRenderTypeList);
+          } else if (properties.type === 'array') {
+            if (properties.items.hasOwnProperty('$ref')) {
+              const findNeewRenderKey = properties.items.$ref.substring(
+                properties.items.$ref.lastIndexOf('/') + 1
+              );
+              if (!hasRenderTypeList.has(findNeewRenderKey)) {
+                hasRenderTypeList.add(findNeewRenderKey);
+                findMoreRef(
+                  alldefinitions,
+                  findNeewRenderKey,
+                  hasRenderTypeList
+                );
+              }
+            }
+          }
+        }
+      );
+    }
+  });
 }
 
 //2.组装渲染数据
@@ -201,14 +262,15 @@ function getResponseType(response: any): string {
       );
     }
   });
+
   return responseType;
 }
 
 //4.写入code
-function writeCode(data:any, fileName: string) {
+function writeCode(data: any, fileName: string) {
   let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-  const ejsHtml = ejs.render(action, { ...data});
-  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: "babel" });
+  const ejsHtml = ejs.render(action, { ...data });
+  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
   fs.writeFile(`${fileName}Controller.ts`, webApiHtml, 'utf8', async () => {});
 }
 
