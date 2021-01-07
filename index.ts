@@ -7,15 +7,12 @@ const axios = require('axios');
 const ora = require('ora');
 const prettier = require('prettier');
 const spinners = [ora('正在获取swagger数据中...'),ora('TS代码生成中...')];
-// const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
-const swaggerUrl = 'http://localhost:7001/swagger-doc';
+const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
+// const swaggerUrl = 'http://localhost:7001/swagger-doc';
 /**
  * 获取基础的swagger数据
  */
 async function getBaseSwaggerInfo() {
-  // compose multiple styles using the chainable API
-  // log(chalk.white.bgGreen.bold('Hello world!'));
-
   spinners[0].start();
   const generateList = [] as Array<GenerateData>;
   const controllerList = [] as Array<ControllerList>;
@@ -31,11 +28,9 @@ async function getBaseSwaggerInfo() {
   const { paths, definitions, tags } = json as any;
   try {
     //1.获取基础的数据
-    //urlKey是路由
     for (let urlKey in paths) {
       let data = {} as GenerateData;
       const pathsObj = paths[urlKey];
-      //类型key
       for (let methodKey in pathsObj) {
         const serviceInfo = pathsObj[methodKey];
         data = {
@@ -47,6 +42,7 @@ async function getBaseSwaggerInfo() {
           response: serviceInfo.responses, //响应
           operationId: serviceInfo.operationId, //方法名称
         };
+        console.log("data====>",data)
       }
       generateList.push(data);
     }
@@ -67,8 +63,7 @@ async function getBaseSwaggerInfo() {
 (async function run() {
   baseFileHandle();
   const baseSwaggerInfo = await getBaseSwaggerInfo();
-  //现在在执行写代码的过程吧
-  //@ts-ignore  //转换代码-得到tsType
+  //@ts-ignore  
   converTest(baseSwaggerInfo);
 })();
 
@@ -81,9 +76,7 @@ function converTest(data: {
       spinners[1].start();
     //1.处理入参ts类型
     data.controllerList.map((controller) => {
-      //渲染list
       const renderList = [] as any;
-      //所有入参类型
       const hasRenderType = new Set() as Set<string>;
       controller.list.map((item) => {
         _.forEach(item.params, function(parameter: any) {
@@ -92,25 +85,16 @@ function converTest(data: {
         });
         //2.组装渲染参数
         assemblyRender(item, renderList, hasRenderType);
-
         //3.得到所有的接口的response
         hasRenderType.add(getResponseType(item.response));
-
-        //4.得到的响应 里面可能还会包裹其他的对象
       });
-
       assemblyResponse(data.definitions, hasRenderType, true);
       const newDefinitions = assemblyResponse(data.definitions, hasRenderType);
-      //end.写入代码
-
       writeCode({ renderList, definitions: newDefinitions }, controller.name);
     });
      setTimeout(()=>{
          spinners[1].succeed('TS代码生成成功~~');
      },1000)
-
-
-
 
   } catch (error) {}
 }
@@ -197,7 +181,6 @@ function assemblyRender(
 ) {
   let showRenderString = new Set();
   let showRenderRef = new Set();
-  //获取返回类型
   const responseType = getResponseType(item.response);
   let operationName = '';
   const operationList: string[] = item.operationId
@@ -217,8 +200,6 @@ function assemblyRender(
     responseType: normalizeTypeName(responseType),
     operationId: operationName,
   } as any;
-  // 这边参数为1个的时候-不管是单个字段或者ref类型
-
   if (!item?.params || item?.params?.length === 0) {
     baseData.showRender = '';
   } else if (item?.params?.length === 1) {
@@ -245,7 +226,6 @@ function assemblyRender(
       }`;
     }
   } else if (item?.params?.length > 1) {
-    //当是多个入参的时候--如果全部是单个字段 如果是其他对象呢
     let isRefTypeCount = 0;
     item.params.map((_params: any) => {
       if (_params.tsType.isRef) {
@@ -322,7 +302,6 @@ function getResponseType(response: any): string {
   return responseType;
 }
 
-//4.写入code
 function writeCode(data: any, fileName: string) {
   let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
   const ejsHtml = ejs.render(action, { ...data });
