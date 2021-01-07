@@ -1,4 +1,3 @@
-
 let _ = require('lodash');
 var ts = require('./util');
 const ejs = require('ejs'); //ejs模版引擎
@@ -14,9 +13,16 @@ const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
 async function getBaseSwaggerInfo() {
   const generateList = [] as Array<GenerateData>;
   const controllerList = [] as Array<ControllerList>;
-  const response = await axios.get(swaggerUrl);
-  if (response.status !== 200) return false;
-  const json = response.data;
+  let json = {};
+  try {
+    const response = await axios.get(swaggerUrl);
+    if (response.status !== 200) return false;
+    json = response.data;
+    
+  } catch (error) {
+    
+  }
+
   const { paths, definitions, tags } = json as any;
   try {
     //1.获取基础的数据
@@ -78,10 +84,10 @@ function converTest(data: {
       });
       //2.组装渲染参数
       assemblyRender(item, renderList, hasRenderType);
-      
+
       //3.得到所有的接口的response
       hasRenderType.add(getResponseType(item.response));
-   
+
       //4.得到的响应 里面可能还会包裹其他的对象
     });
 
@@ -191,20 +197,32 @@ function assemblyRender(
     url: item.url,
     method: item.method,
     summary: item.summary,
-    responseType:normalizeTypeName(responseType),
+    responseType: normalizeTypeName(responseType),
     operationId: operationName,
   } as any;
   // 这边参数为1个的时候-不管是单个字段或者ref类型
-  console.log("item====>",item)
-  if ( !item?.params || item?.params?.length === 0 ) {
+
+  if (!item?.params || item?.params?.length === 0) {
     baseData.showRender = '';
   } else if (item?.params?.length === 1) {
     const typeData = item.params[0];
+    if (baseData.operationId === 'updateStoreSortUsingPOST') {
+      
+    }
     if (typeData?.tsType?.isRef) {
       baseData.showRender = `params${typeData.required ? '' : '?'}:${
         typeData.tsType.target
       }`;
       hasRenderType.add(typeData.tsType.target);
+    } else if (typeData?.tsType?.isArray) {
+      baseData.showRender = `params${typeData.required ? '' : '?'}:Array<${
+        typeData.tsType.elementType.target
+          ? typeData.tsType.elementType.target.replace('«', '').replace('»', '')
+          : typeData.tsType.elementType.tsType
+      }>`;
+      if (typeData.tsType.elementType.target) {
+        hasRenderType.add(typeData.tsType.elementType.target);
+      }
     } else {
       baseData.showRender = `${typeData.name}${typeData.required ? '' : '?'}:${
         typeData.tsType.tsType
@@ -222,6 +240,19 @@ function assemblyRender(
         isRefTypeCount += 1;
         showRenderRef.add(`${_params.type}`);
         hasRenderType.add(_params.type);
+      } else if (_params.tsType.isArray) {
+        showRenderString.add(
+          `${_params.name}${_params.required ? '' : '?'} :Array<${
+            _params.tsType.elementType.target
+              ? _params.tsType.elementType.target
+                  .replace('«', '')
+                  .replace('»', '')
+              : _params.tsType.elementType.tsType
+          }>`
+        );
+        if (_params.tsType.elementType.target) {
+          hasRenderType.add(_params.tsType.elementType.target);
+        }
       } else {
         showRenderString.add(
           `${_params.name}${_params.required ? '' : '?'} : ${
@@ -256,16 +287,20 @@ function getResponseType(response: any): string {
     if (key === 'default') {
       responseType = 'BaseResponse';
     }
-    if (
-      swaggerType.hasOwnProperty('schema') &&
-      _.isString(swaggerType.schema?.$ref)
-    ) {
-      responseType = swaggerType.schema.$ref.substring(
-        swaggerType.schema.$ref.lastIndexOf('/') + 1
-      );
+    if(key === '200'){
+      if (
+        swaggerType.hasOwnProperty('schema') &&
+        _.isString(swaggerType.schema?.$ref)
+      ) {
+        responseType = swaggerType.schema.$ref.substring(
+          swaggerType.schema.$ref.lastIndexOf('/') + 1
+        );
+      }else if( swaggerType.hasOwnProperty('schema') &&  swaggerType.schema.hasOwnProperty('type')){
+        responseType = swaggerType.schema.type;
+      }
     }
+    
   });
-
   return responseType;
 }
 
@@ -273,8 +308,8 @@ function getResponseType(response: any): string {
 function writeCode(data: any, fileName: string) {
   let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
   const ejsHtml = ejs.render(action, { ...data });
-  // const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
-  fs.writeFile(`${fileName}Controller.ts`, ejsHtml, 'utf8', async () => {});
+  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
+  fs.writeFile(`${fileName}Controller.ts`, webApiHtml, 'utf8', async () => {});
 }
 
 function normalizeTypeName(id: string) {
