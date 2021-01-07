@@ -5,8 +5,8 @@ const fs = require('fs'); //文件读写
 const path = require('path'); //路径配置
 const axios = require('axios');
 const prettier = require('prettier');
-const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
-
+// const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
+const swaggerUrl = 'http://localhost:7001/swagger-doc';
 /**
  * 获取基础的swagger数据
  */
@@ -61,11 +61,15 @@ async function getBaseSwaggerInfo() {
 }
 
 (async function run() {
+  baseFileHandle();
   const baseSwaggerInfo = await getBaseSwaggerInfo();
   //现在在执行写代码的过程吧
   //@ts-ignore  //转换代码-得到tsType
   converTest(baseSwaggerInfo);
 })();
+
+
+
 
 //1.转换Ts类型
 function converTest(data: {
@@ -306,10 +310,31 @@ function getResponseType(response: any): string {
 
 //4.写入code
 function writeCode(data: any, fileName: string) {
-  let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
-  const ejsHtml = ejs.render(action, { ...data });
-  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
-  fs.writeFile(`${fileName}Controller.ts`, webApiHtml, 'utf8', async () => {});
+    let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
+    const ejsHtml = ejs.render(action, { ...data });
+    const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
+    fs.writeFile(`./controller/${fileName}Controller.ts`, webApiHtml, 'utf8', async () => {});
+}
+
+function baseFileHandle(){
+  delDir(path.join(__dirname,'controller'))
+  fs.mkdirSync(path.join(__dirname,'controller'))
+}
+
+function delDir(path:string){
+  let files = [];
+  if(fs.existsSync(path)){
+      files = fs.readdirSync(path);
+      files.forEach((file:any) =>{
+          let curPath = path + "/" + file;
+          if(fs.statSync(curPath).isDirectory()){
+              delDir(curPath); //递归删除文件夹
+          } else {
+              fs.unlinkSync(curPath); //删除文件
+          }
+      });
+      fs.rmdirSync(path);
+  }
 }
 
 function normalizeTypeName(id: string) {
