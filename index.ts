@@ -6,9 +6,8 @@ const path = require('path'); //路径配置
 const axios = require('axios');
 const ora = require('ora');
 const prettier = require('prettier');
-const pinyin = require("pinyin");
+const pinyin = require('pinyin');
 const spinners = [ora('正在获取swagger数据中...'), ora('TS代码生成中...')];
-// const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
 const swaggerUrl = 'http://localhost:7001/swagger-doc';
 /**
  * 获取基础的swagger数据
@@ -48,15 +47,17 @@ async function getBaseSwaggerInfo() {
     }
 
     tags.map((tags: { name: string; description: string }) => {
-
-
       const serviceList = generateList.filter((item) => {
         return tags.name === item.tags;
       }) as GenerateData[];
 
       const describeName = tags.name;
       const newTagsName = translateName(tags.name);
-      controllerList.push({ name: newTagsName, describeName,list: serviceList });
+      controllerList.push({
+        name: newTagsName,
+        describeName,
+        list: serviceList,
+      });
     });
 
     return { controllerList, definitions };
@@ -66,7 +67,6 @@ async function getBaseSwaggerInfo() {
 }
 
 (async function run() {
- 
   const baseSwaggerInfo = await getBaseSwaggerInfo();
   //@ts-ignore
   converTest(baseSwaggerInfo);
@@ -79,11 +79,14 @@ function converTest(data: {
 }) {
   try {
     spinners[1].start();
-    const fileList = [] as string[];
+    const fileList = [] as Array<fileName>;
     baseFileHandle();
     //1.处理入参ts类型
     data.controllerList.map((controller) => {
-      fileList.push(`${controller.name}Controller`);
+      fileList.push({
+        name: `${controller.name}Controller`,
+        describeName: controller.describeName,
+      });
       const renderList = [] as any;
       const hasRenderType = new Set() as Set<string>;
       controller.list.map((item) => {
@@ -98,17 +101,19 @@ function converTest(data: {
       });
       assemblyResponse(data.definitions, hasRenderType, true);
       const newDefinitions = assemblyResponse(data.definitions, hasRenderType);
-      const  {name,describeName} = controller;
-      writeCode({ renderList, definitions: newDefinitions }, {name,describeName});
+      const { name, describeName } = controller;
+      writeCode(
+        { renderList, definitions: newDefinitions },
+        { name, describeName }
+      );
     });
     writeAllControllerCode(fileList);
 
     spinners[1].succeed('TS代码生成成功~~');
   } catch (error) {
-    console.log("errr======>",error)
+    console.log('errr======>', error);
     spinners[1].fail('好像发生了点意外~');
   }
- 
 }
 
 /**
@@ -314,10 +319,13 @@ function getResponseType(response: any): string {
   return responseType;
 }
 
-function writeCode(data: any, fileNameInfo: {name:string,describeName:string}) {
+function writeCode(
+  data: any,
+  fileNameInfo: { name: string; describeName: string }
+) {
   let action = fs.readFileSync(path.resolve(__dirname, './ejs/ts.ejs'), 'utf8');
   const describeName = fileNameInfo.describeName;
-  const ejsHtml = ejs.render(action, { ...data ,describeName});
+  const ejsHtml = ejs.render(action, { ...data, describeName });
   const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
   fs.writeFile(
     `./controller/${fileNameInfo.name}Controller.ts`,
@@ -327,8 +335,7 @@ function writeCode(data: any, fileNameInfo: {name:string,describeName:string}) {
   );
 }
 
-
-function writeAllControllerCode(fileList: string[]) {
+function writeAllControllerCode(fileList: Array<fileName>) {
   let action = fs.readFileSync(
     path.resolve(__dirname, './ejs/allController.ejs'),
     'utf8'
@@ -363,19 +370,21 @@ function normalizeTypeName(id: string) {
   return id.replace(/«|»/g, '');
 }
 
-
-function translateName(name:string){
-    //可能需要在这边处理数据了----
-    const reg = new RegExp("[\\u4E00-\\u9FFF]+","g");
-    if(reg.test(name)){
-      name.split('').map((key:string)=>{
-        const singlePingyin = pinyin(key, {
-            style: pinyin.STYLE_FIRST_LETTER, 
-        })[0][0]
-        name = name.replace(key,singlePingyin).replace('-','').replace('/','');
-      })
-    }
-    return name;
+function translateName(name: string) {
+  //可能需要在这边处理数据了----
+  const reg = new RegExp('[\\u4E00-\\u9FFF]+', 'g');
+  if (reg.test(name)) {
+    name.split('').map((key: string) => {
+      const singlePingyin = pinyin(key, {
+        style: pinyin.STYLE_FIRST_LETTER,
+      })[0][0];
+      name = name
+        .replace(key, singlePingyin)
+        .replace('-', '')
+        .replace('/', '');
+    });
+  }
+  return name;
 }
 
 interface GenerateData {
@@ -401,6 +410,11 @@ interface Params {
 
 interface ControllerList {
   name: string;
-  describeName:string;
+  describeName: string;
   list: Array<GenerateData>;
+}
+
+interface fileName {
+  name: string;
+  describeName: string;
 }

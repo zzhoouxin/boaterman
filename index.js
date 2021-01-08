@@ -55,8 +55,8 @@ var ora = require('ora');
 var prettier = require('prettier');
 var pinyin = require("pinyin");
 var spinners = [ora('正在获取swagger数据中...'), ora('TS代码生成中...')];
-// const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
-var swaggerUrl = 'http://localhost:7001/swagger-doc';
+var swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
+// const swaggerUrl = 'http://localhost:7001/swagger-doc';
 /**
  * 获取基础的swagger数据
  */
