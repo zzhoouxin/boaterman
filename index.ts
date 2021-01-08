@@ -6,9 +6,9 @@ const path = require('path'); //路径配置
 const axios = require('axios');
 const ora = require('ora');
 const prettier = require('prettier');
-const spinners = [ora('正在获取swagger数据中...'),ora('TS代码生成中...')];
-const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
-// const swaggerUrl = 'http://localhost:7001/swagger-doc';
+const spinners = [ora('正在获取swagger数据中...'), ora('TS代码生成中...')];
+// const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
+const swaggerUrl = 'http://localhost:7001/swagger-doc';
 /**
  * 获取基础的swagger数据
  */
@@ -42,7 +42,6 @@ async function getBaseSwaggerInfo() {
           response: serviceInfo.responses, //响应
           operationId: serviceInfo.operationId, //方法名称
         };
-        console.log("data====>",data)
       }
       generateList.push(data);
     }
@@ -63,7 +62,7 @@ async function getBaseSwaggerInfo() {
 (async function run() {
   baseFileHandle();
   const baseSwaggerInfo = await getBaseSwaggerInfo();
-  //@ts-ignore  
+  //@ts-ignore
   converTest(baseSwaggerInfo);
 })();
 
@@ -73,9 +72,11 @@ function converTest(data: {
   definitions: any;
 }) {
   try {
-      spinners[1].start();
+    spinners[1].start();
+    const fileList = [] as string[];
     //1.处理入参ts类型
     data.controllerList.map((controller) => {
+      fileList.push(`${controller.name}Controller`);
       const renderList = [] as any;
       const hasRenderType = new Set() as Set<string>;
       controller.list.map((item) => {
@@ -92,13 +93,23 @@ function converTest(data: {
       const newDefinitions = assemblyResponse(data.definitions, hasRenderType);
       writeCode({ renderList, definitions: newDefinitions }, controller.name);
     });
-     setTimeout(()=>{
-         spinners[1].succeed('TS代码生成成功~~');
-     },1000)
+    writeAllControllerCode(fileList);
 
-  } catch (error) {}
+    spinners[1].succeed('TS代码生成成功~~');
+  } catch (error) {
+    console.log("errr======>",error)
+  }
 }
 
+function writeAllControllerCode(fileList: string[]) {
+  let action = fs.readFileSync(
+    path.resolve(__dirname, './allController.ejs'),
+    'utf8'
+  );
+  const ejsHtml = ejs.render(action, { fileList });
+  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
+  fs.writeFile(`./controller/api.ts`, webApiHtml, 'utf8', async () => {});
+}
 /**
  * 处理response对象
  * @param definitions 总接口的respons
@@ -338,7 +349,6 @@ function delDir(path: string) {
 function normalizeTypeName(id: string) {
   return id.replace(/«|»/g, '');
 }
-
 
 interface GenerateData {
   url: string;

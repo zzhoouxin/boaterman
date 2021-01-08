@@ -1,0 +1,10 @@
+<% fileList.forEach((item)=>{ %>
+    import <%= item%> from './<%=item%>';
+<% })%>    
+
+export default {
+    <% fileList.forEach((item)=>{ %>
+       <%= item%>,
+    <% })%> 
+    
+}
