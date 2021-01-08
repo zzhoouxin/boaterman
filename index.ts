@@ -6,6 +6,7 @@ const path = require('path'); //路径配置
 const axios = require('axios');
 const ora = require('ora');
 const prettier = require('prettier');
+const pinyin = require("pinyin");
 const spinners = [ora('正在获取swagger数据中...'), ora('TS代码生成中...')];
 // const swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
 const swaggerUrl = 'http://localhost:7001/swagger-doc';
@@ -47,10 +48,15 @@ async function getBaseSwaggerInfo() {
     }
 
     tags.map((tags: { name: string; description: string }) => {
+
+
       const serviceList = generateList.filter((item) => {
         return tags.name === item.tags;
       }) as GenerateData[];
-      controllerList.push({ name: tags.name, list: serviceList });
+
+      const describeName = tags.name;
+      const newTagsName = translateName(tags.name);
+      controllerList.push({ name: newTagsName, describeName,list: serviceList });
     });
 
     return { controllerList, definitions };
@@ -60,7 +66,7 @@ async function getBaseSwaggerInfo() {
 }
 
 (async function run() {
-  baseFileHandle();
+ 
   const baseSwaggerInfo = await getBaseSwaggerInfo();
   //@ts-ignore
   converTest(baseSwaggerInfo);
@@ -74,6 +80,7 @@ function converTest(data: {
   try {
     spinners[1].start();
     const fileList = [] as string[];
+    baseFileHandle();
     //1.处理入参ts类型
     data.controllerList.map((controller) => {
       fileList.push(`${controller.name}Controller`);
@@ -91,14 +98,17 @@ function converTest(data: {
       });
       assemblyResponse(data.definitions, hasRenderType, true);
       const newDefinitions = assemblyResponse(data.definitions, hasRenderType);
-      writeCode({ renderList, definitions: newDefinitions }, controller.name);
+      const  {name,describeName} = controller;
+      writeCode({ renderList, definitions: newDefinitions }, {name,describeName});
     });
     writeAllControllerCode(fileList);
 
     spinners[1].succeed('TS代码生成成功~~');
   } catch (error) {
     console.log("errr======>",error)
+    spinners[1].fail('好像发生了点意外~');
   }
+ 
 }
 
 /**
@@ -304,12 +314,13 @@ function getResponseType(response: any): string {
   return responseType;
 }
 
-function writeCode(data: any, fileName: string) {
+function writeCode(data: any, fileNameInfo: {name:string,describeName:string}) {
   let action = fs.readFileSync(path.resolve(__dirname, './ejs/ts.ejs'), 'utf8');
-  const ejsHtml = ejs.render(action, { ...data });
+  const describeName = fileNameInfo.describeName;
+  const ejsHtml = ejs.render(action, { ...data ,describeName});
   const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
   fs.writeFile(
-    `./controller/${fileName}Controller.ts`,
+    `./controller/${fileNameInfo.name}Controller.ts`,
     webApiHtml,
     'utf8',
     async () => {}
@@ -352,6 +363,21 @@ function normalizeTypeName(id: string) {
   return id.replace(/«|»/g, '');
 }
 
+
+function translateName(name:string){
+    //可能需要在这边处理数据了----
+    const reg = new RegExp("[\\u4E00-\\u9FFF]+","g");
+    if(reg.test(name)){
+      name.split('').map((key:string)=>{
+        const singlePingyin = pinyin(key, {
+            style: pinyin.STYLE_FIRST_LETTER, 
+        })[0][0]
+        name = name.replace(key,singlePingyin).replace('-','').replace('/','');
+      })
+    }
+    return name;
+}
+
 interface GenerateData {
   url: string;
   method: string;
@@ -375,5 +401,6 @@ interface Params {
 
 interface ControllerList {
   name: string;
+  describeName:string;
   list: Array<GenerateData>;
 }

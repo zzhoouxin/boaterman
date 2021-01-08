@@ -1,5 +1,11 @@
 /**
  *
+ *SpeechController
+ *@Controller
+ **/
+
+/**
+ *
  *添加组件
  *
  **/
