@@ -101,15 +101,6 @@ function converTest(data: {
   }
 }
 
-function writeAllControllerCode(fileList: string[]) {
-  let action = fs.readFileSync(
-    path.resolve(__dirname, './allController.ejs'),
-    'utf8'
-  );
-  const ejsHtml = ejs.render(action, { fileList });
-  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
-  fs.writeFile(`./controller/api.ts`, webApiHtml, 'utf8', async () => {});
-}
 /**
  * 处理response对象
  * @param definitions 总接口的respons
@@ -314,7 +305,7 @@ function getResponseType(response: any): string {
 }
 
 function writeCode(data: any, fileName: string) {
-  let action = fs.readFileSync(path.resolve(__dirname, './ts.ejs'), 'utf8');
+  let action = fs.readFileSync(path.resolve(__dirname, './ejs/ts.ejs'), 'utf8');
   const ejsHtml = ejs.render(action, { ...data });
   const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
   fs.writeFile(
@@ -323,6 +314,17 @@ function writeCode(data: any, fileName: string) {
     'utf8',
     async () => {}
   );
+}
+
+
+function writeAllControllerCode(fileList: string[]) {
+  let action = fs.readFileSync(
+    path.resolve(__dirname, './ejs/allController.ejs'),
+    'utf8'
+  );
+  const ejsHtml = ejs.render(action, { fileList });
+  const webApiHtml = prettier.format(ejsHtml, { semi: false, parser: 'babel' });
+  fs.writeFile(`./controller/api.ts`, webApiHtml, 'utf8', async () => {});
 }
 
 function baseFileHandle() {
