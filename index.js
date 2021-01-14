@@ -53,10 +53,9 @@ var path = require('path'); //路径配置
 var axios = require('axios');
 var ora = require('ora');
 var prettier = require('prettier');
-var pinyin = require("pinyin");
+var pinyin = require('pinyin');
 var spinners = [ora('正在获取swagger数据中...'), ora('TS代码生成中...')];
-var swaggerUrl = 'https://rv.cosmoplat.com/sindar/sit/rc/api/v2/api-docs';
-// const swaggerUrl = 'http://localhost:7001/swagger-doc';
+var swaggerUrl = 'http://localhost:7001/swagger-doc';
 /**
  * 获取基础的swagger数据
  */
@@ -112,7 +111,11 @@ function getBaseSwaggerInfo() {
                             });
                             var describeName = tags.name;
                             var newTagsName = translateName(tags.name);
-                            controllerList.push({ name: newTagsName, describeName: describeName, list: serviceList });
+                            controllerList.push({
+                                name: newTagsName,
+                                describeName: describeName,
+                                list: serviceList
+                            });
                         });
                         return [2 /*return*/, { controllerList: controllerList, definitions: definitions }];
                     }
@@ -147,7 +150,10 @@ function converTest(data) {
         baseFileHandle();
         //1.处理入参ts类型
         data.controllerList.map(function (controller) {
-            fileList_1.push(controller.name + "Controller");
+            fileList_1.push({
+                name: controller.name + "Controller",
+                describeName: controller.describeName
+            });
             var renderList = [];
             var hasRenderType = new Set();
             controller.list.map(function (item) {
@@ -169,7 +175,7 @@ function converTest(data) {
         spinners[1].succeed('TS代码生成成功~~');
     }
     catch (error) {
-        console.log("errr======>", error);
+        console.log('errr======>', error);
         spinners[1].fail('好像发生了点意外~');
     }
 }
@@ -382,13 +388,16 @@ function normalizeTypeName(id) {
 }
 function translateName(name) {
     //可能需要在这边处理数据了----
-    var reg = new RegExp("[\\u4E00-\\u9FFF]+", "g");
+    var reg = new RegExp('[\\u4E00-\\u9FFF]+', 'g');
     if (reg.test(name)) {
         name.split('').map(function (key) {
             var singlePingyin = pinyin(key, {
                 style: pinyin.STYLE_FIRST_LETTER
             })[0][0];
-            name = name.replace(key, singlePingyin).replace('-', '').replace('/', '');
+            name = name
+                .replace(key, singlePingyin)
+                .replace('-', '')
+                .replace('/', '');
         });
     }
     return name;
